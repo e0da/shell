@@ -13,6 +13,7 @@ int main() {
 
     char*  input;
     char*  input_copy;
+    char*  input_copy_pointer;
     char*  token;
     char*  command[MAX_COMMAND_ARGUMENT_COUNT + 1]; /* +1 to hold the final NULL */
     int    status;
@@ -29,9 +30,10 @@ int main() {
         fgets(input, INPUT_BUFFER_MAX_SIZE, BUFFER_INPUT_FILE);
         input_copy = (char*)malloc(sizeof(input));
         strcpy(input_copy, input);
+        input_copy_pointer = input_copy; /* Use a separate pointer so we can free input_copy later */
         if (LAST_CHAR(input_copy) == '\n')
             LAST_CHAR(input_copy) = '\0';
-        for (token_counter = 0; (token = strsep(&input_copy, " ")); token_counter++) {
+        for (token_counter = 0; (token = strsep(&input_copy_pointer, " ")); token_counter++) {
             command[token_counter] = token;
         }
         command[token_counter] = NULL;
