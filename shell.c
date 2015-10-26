@@ -1,61 +1,68 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
-#define BUFFER_MAX (sizeof(char) * 1024)
-#define QUIT_COMMAND "exit\n"
-#define NON_ZERO_EXIT_STATUS_MESSAGE \
-    "The command returned a non-zero exit status: %d\n"
+#define INPUT_BUFFER_MAX_SIZE (1024 * sizeof(char))
+#define MAX_COMMAND_ARGUMENT_COUNT 2
+#define BUFFER_INPUT_FILE stdin
 
-int should_continue(char* input) {
-    return (*input && strcmp(input, QUIT_COMMAND) != 0);
-}
-
-void print_prompt() {
-    printf("> ");
-}
-
-/* TODO This needs to be changed to actually parse a bunch of tokens using
- * spaces as a delimeter and it needs to eliminate the \n */
-char* read_input() {
-    char* input = (char*)malloc(BUFFER_MAX);
-    fgets(input, BUFFER_MAX, stdin);
-    return input;
-}
-
-void execute_command(char* command, int* status) {
-    int child_pid;
-    char* args[] = {"/"};
-    child_pid = fork();
-    if (child_pid) {
-        waitpid(child_pid, status, 0);
-    }
-    else {
-        execve("/bin/ls", args, 0);
-        exit(0);
-    }
-}
-
-void report_non_zero_exit_status(int status) {
-    printf(NON_ZERO_EXIT_STATUS_MESSAGE, status);
-}
-
-void read_execute_loop() {
-    char* input;
-    int status;
-    do {
-        print_prompt();
-        input = read_input();
-        execute_command(input, &status);
-        if (status) {
-            report_non_zero_exit_status(status);
-        }
-    } while ( should_continue(input) );
-}
+#define LAST_CHAR(input) input[strlen(input)-1]
 
 int main() {
-    read_execute_loop();
+
+    char*  input;
+    char*  input_copy;
+    char*  token;
+    char*  command[MAX_COMMAND_ARGUMENT_COUNT + 1]; /* +1 to hold the final NULL */
+    int    status;
+    int    token_counter;
+    pid_t  child_pid;
+
+    do {
+
+        /* Print prompt */
+        printf("> ");
+
+        /* Read input */
+        input = (char*)malloc(INPUT_BUFFER_MAX_SIZE);
+        fgets(input, INPUT_BUFFER_MAX_SIZE, BUFFER_INPUT_FILE);
+        input_copy = (char*)malloc(sizeof(input));
+        strcpy(input_copy, input);
+        if (LAST_CHAR(input_copy) == '\n')
+            LAST_CHAR(input_copy) = '\0';
+        for (token_counter = 0; (token = strsep(&input_copy, " ")); token_counter++) {
+            command[token_counter] = token;
+        }
+        command[token_counter] = NULL;
+
+        /* Exit if EOF or "exit" command */
+        if (!*input || !strcmp(command[0], "exit")) exit(0);
+
+        /* Handle cd */
+        if (!strcmp(command[0], "cd")) {
+            chdir(command[1]);
+        }
+
+        /* Execute command */
+        child_pid = fork();
+        if (child_pid) {
+            waitpid(child_pid, &status, 0);
+            if (status) {
+                printf("Non-zero exit status: %d\n", status);
+            }
+        }
+        else {
+            if (execvp(command[0], command)) {
+                printf("Command not found: %s\n", command[0]);
+            }
+            break;
+        }
+
+        /* Free allocated memory */
+        free(input);
+        free(input_copy);
+
+    } while (*input);
     return 0;
 }
