@@ -4,7 +4,7 @@
 #include <string.h>
 
 #define INPUT_BUFFER_MAX_SIZE (1024 * sizeof(char))
-#define MAX_COMMAND_ARGUMENT_COUNT 2
+#define MAX_COMMAND_ARGUMENT_COUNT 255
 #define BUFFER_INPUT_FILE stdin
 
 #define LAST_CHAR(input) input[strlen(input)-1]
